@@ -1,0 +1,125 @@
+<?php
+
+/**
+ * @file
+ * Jaspersoft Task Evaluation Module
+ */
+
+/**
+ * Implementation of hook_help().
+ */
+function js_eval_help($path, $arg) {
+  switch ($path) {
+    case 'admin/help#js_eval':
+      $output = '<p>'. t('this module will let you help to evaluate the assigned tasks') .'</p>';
+      return $output;
+    case 'admin/build/js_eval':
+      $output = '<p>'. t('This page lets you set up <a href="@form">your site-wide contact form</a>. To do so, add one or more categories. You can associate different recipients with each category to route e-mails to different people. For example, you can route website feedback to the webmaster and direct product information requests to the sales department. On the <a href="@settings">settings page</a>, you can customize the information shown above the contact form. This can be useful to provide additional contact information such as your postal address and telephone number.', array('@settings' => url('admin/build/contact/settings'), '@form' => url('contact'))) .'</p>';
+      if (!module_exists('menu')) {
+        $menu_note = t('The menu item can be customized and configured only once the menu module has been <a href="@modules-page">enabled</a>.', array('@modules-page' => url('admin/settings/modules')));
+      }
+      else {
+        $menu_note = '';
+      }
+      $output .= '<p>'. t('The contact module also adds a <a href="@menu-settings">menu item</a> (disabled by default) to the navigation block.', array('@menu-settings' => url('admin/build/menu'))) .' '. $menu_note .'</p>';
+      return $output;
+  }	
+}
+
+/**
+ * Implementation of hook_perm
+ */
+function js_eval_perm() {
+  return array('access js_eval', 'administer js_eval');
+}
+
+/**
+ * Implementation of hook_theme().
+ */
+function js_eval_theme() {
+  return array(
+    'js_eval_myworkspace' => array(
+      'template' => 'js-eval-myworkspace',
+      'file'=> 'js_eval.pages.inc'
+    )
+  );
+}
+
+
+/**
+ * Access callback for user account editing.
+ */
+function myworkspace_view_access($account) {
+  return $account && $account->uid &&
+    (
+      // Always let users view their own profile.
+      ($GLOBALS['user']->uid == $account->uid) ||
+      // Administrators can view all accounts.
+      user_access('administer js_eval') ||
+      // The user is not blocked and logged in at least once.
+      ($account->access && $account->status && user_access('access js_eval'))
+    );
+}
+
+/**
+ * Access callback for my workspace editing page.
+ */
+function myworkspace_edit_access($account) {
+  return (($GLOBALS['user']->uid == $account->uid) || user_access('administer js_eval')) && $account->uid > 0;
+}
+
+
+/**
+ * Implementation of hook_menu().
+ */
+function js_eval_menu() {
+  $items['js_eval/myworkspace/%user_uid_optional'] = array(
+    'title' => 'My Workspace',
+    'page callback' => 'myworkspace_list_page',
+	'page arguments' => array(2),
+    'access callback' => 'myworkspace_view_access',
+    'access arguments' => array(2),
+	'type' => MENU_NORMAL_ITEM,
+	'parent' => '',
+	'file' => 'js_eval.pages.inc'
+  );
+  $items['js_eval/myworkspace/%user_uid_optional/view'] = array(
+    'title' => 'View',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => -10,
+  );
+  $items['js_eval/myworkspace/%user_uid_optional/create'] = array(
+    'title' => 'Add My Workspace',
+	'page callback' => 'drupal_get_form',
+    'page arguments' => array('js_eval_myworkspace_form'),
+    'access arguments' => array('access js_eval'),
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'js_eval.pages.inc',
+  );
+  $items['js_eval/myworkspace/%user_uid_optional/edit/%myworkspace'] = array(
+    'title' => 'Edit - My Workspace',
+	'page callback' => 'drupal_get_form',
+    'page arguments' => array('js_eval_myworkspace_edit_form',4),
+    'access arguments' => 'myworkspace_edit_access',
+    'file' => 'js_eval.pages.inc',
+  );
+  $items['js_eval/myworkspace/%user_uid_optional/delete/%myworkspace'] = array(
+    'title' => 'Delete - My Workspace',
+	'page callback' => 'drupal_get_form',
+    'page arguments' => array('js_eval_myworkspace_delete_form',4),
+    'access arguments' => 'myworkspace_edit_access',
+    'file' => 'js_eval.pages.inc',
+  );
+  return $items;
+}
+
+/**
+ * Load the data for a single myworkspace.
+ */
+function myworkspace_load($wid) {
+  $result = db_fetch_array(db_query("SELECT * FROM {js_eval_myworkspace} WHERE wid = %d", $wid));
+  $myworkspace_json_data = $result["data"];
+  $myworkspace_data = json_decode($myworkspace_json_data,true);
+  $myworkspace = array_merge($result,$myworkspace_data);
+  return empty($myworkspace) ? FALSE : $myworkspace;
+}

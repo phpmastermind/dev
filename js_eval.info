@@ -1,0 +1,5 @@
+name = Jaspersoft Eval Accelarator
+description = Jaspersoft Task Evaluation Accelarotor
+package = Core - optional
+version = VERSION
+core = 6.x
